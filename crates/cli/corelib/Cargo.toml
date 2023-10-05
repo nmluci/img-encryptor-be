@@ -1,0 +1,15 @@
+[package]
+name = "corelib"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+p256 = {version = "0.13.2", features = ["std", "arithmetic", "ecdh"], default-features = false }
+aes = {version = "0.8.3", default-features = false}
+cbc = {version = "0.1.2", features = ["block-padding", "alloc"], default-features = false}
+hmac = {version = "0.12.1", default-features = false}
+sha2 = {version = "0.10.7", default-features = false}
+hkdf = {version = "0.12.3", default-features = false}
+thiserror = "1.0.40"

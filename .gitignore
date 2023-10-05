@@ -1,3 +1,8 @@
 target/
 .env
 .vscode/
+*.png
+*.jpeg
+*.gif
+*.tiff
+*.jpg
