@@ -1,0 +1,18 @@
+[package]
+name = "local-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = {version = "0.11.20", features = ["json"]}
+tokio = { version = "1.24.2", features = ["full"], default-features = false }
+serde =  { version = "1.0.152", features = ["derive"] }
+serde_json = { default-features = false, version = "1.0.95" }
+chrono = {version = "0.4.24", features=["serde"], default-features = false }
+dotenv = "0.15.0"
+base64 = {version = "0.21.2", default-features = false }
+p256 = {version = "0.13.2", features = ["std", "arithmetic", "ecdh"], default-features = false }
+rand_core = {version = "0.6.4", default-features = false }
+aes = {version = "0.8.3"}

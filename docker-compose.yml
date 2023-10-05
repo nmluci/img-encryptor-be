@@ -1,0 +1,26 @@
+version: '3.5'
+services:
+  sp-security-be:
+    container_name: rust-template-backend
+    image: nmluci/rs-template-be:$BUILD_TAG
+    build: 
+      context: .
+      args:
+        USERNAME_GITHUB: 
+        TOKEN_GITHUB: 
+        BUILD_TAG: $BUILD_TAG 
+        BUILD_TIMESTAMP: $BUILD_TIMESTAMP
+    ports:
+      - "7780:7780"
+    healthcheck:
+      test: curl --fail http://127.0.0.1:7780/api/v1/ping || exit 1
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+networks:
+  default:
+    name: stellar-net
+    external: true
+    
