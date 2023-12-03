@@ -12,4 +12,5 @@ cbc = {version = "0.1.2", features = ["block-padding", "alloc"], default-feature
 hmac = {version = "0.12.1", default-features = false}
 sha2 = {version = "0.10.7", default-features = false}
 hkdf = {version = "0.12.3", default-features = false}
+rand_core = {version = "0.6.4", default-features = false }
 thiserror = "1.0.40"
