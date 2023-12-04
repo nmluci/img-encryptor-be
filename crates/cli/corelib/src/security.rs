@@ -4,6 +4,7 @@ use aes::cipher::typenum::U32;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use hmac::Mac;
 use p256::ecdh;
+use rand_core::{OsRng, RngCore};
 use p256::{SecretKey, PublicKey};
 use sha2::Sha256;
 use hkdf::Hkdf;
@@ -13,13 +14,34 @@ use crate::security_error::SecurityError;
 // AES-256-CBC
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
+pub fn aes256_iv_encrypt(key: GenericArray<u8, U32>, msg: &[u8]) -> (Vec<u8>, Vec<u8>) {
+   let mut iv = [0u8; 16];
+   OsRng.fill_bytes(&mut iv);
 
-pub fn aes256_encrypt(key: GenericArray<u8, U32>, iv: [u8; 16], msg: &[u8]) -> Vec<u8> {
-   Aes256CbcEnc::new(&key, &iv.into()).encrypt_padded_vec_mut::<Pkcs7>(msg)
+   let ct = Aes256CbcEnc::new(&key, &iv.into()).encrypt_padded_vec_mut::<Pkcs7>(msg);
+
+   (ct, iv.into())
 }
 
-pub fn aes256_decrypt(key: GenericArray<u8, U32>,iv: [u8; 16], msg: &[u8]) -> Result<Vec<u8>, UnpadError> {
-   Aes256CbcDec::new(&key, &iv.into()).decrypt_padded_vec_mut::<Pkcs7>(msg)
+pub fn aes256_encrypt(key: GenericArray<u8, U32>, msg: &[u8]) -> Vec<u8> {
+   let mut iv = [0u8; 16];
+   OsRng.fill_bytes(&mut iv);
+
+   let mut ct = Aes256CbcEnc::new(&key, &iv.into()).encrypt_padded_vec_mut::<Pkcs7>(msg);
+
+   ct.extend_from_slice(&iv);
+   ct
+}
+
+pub fn aes256_decrypt(key: GenericArray<u8, U32>, msg: &[u8]) -> Result<Vec<u8>, UnpadError> {
+   let (ct, iv) = msg.split_at(msg.len()-16);
+
+   Aes256CbcDec::new(&key, iv.into()).decrypt_padded_vec_mut::<Pkcs7>(ct)
+}
+
+
+pub fn aes256_iv_decrypt(key: GenericArray<u8, U32>, iv: &[u8], msg: &[u8]) -> Result<Vec<u8>, UnpadError> {
+   Aes256CbcDec::new(&key, iv.into()).decrypt_padded_vec_mut::<Pkcs7>(msg)
 }
 
 // ECDH
@@ -29,15 +51,41 @@ pub fn ecdh_generate_secret(sk: SecretKey, pk: PublicKey) -> ecdh::SharedSecret 
 
 
 // HKDF-SHA-256
-pub fn generate_shared_key(secret: &ecdh::SharedSecret) -> Result<Vec<u8>, SecurityError>{
-   // todo: determine salt to be used
+// this function accept shared secret from ECDH, and returns tuples containing Derrived Encryption Key and MAC key
+pub fn generate_shared_key(secret: &ecdh::SharedSecret) -> Result<(Vec<u8>, Vec<u8>), SecurityError>{
    let key = secret.extract::<Sha256>(Some(b""));
 
-   let mut shared_key = [0u8; 64]; 
-   match Hkdf::expand(&key, &[], &mut shared_key) {
-      Ok(_) => Ok(shared_key.to_vec()),
-      Err(e) => Err(SecurityError::GenericError(e.to_string()))
-   }
+   let mut enc_key = [0u8; 32]; 
+   let mut mac_key = [0u8; 32]; 
+   
+   Ok((
+      match Hkdf::expand(&key, b"enc", &mut enc_key) {
+         Ok(_) => enc_key.to_vec(),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }, 
+      match Hkdf::expand(&key, b"mac", &mut mac_key) {
+         Ok(_) => mac_key.to_vec(),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }
+   ))
+}
+
+pub fn expand_secret_key(secret: Vec<u8>) -> Result<(GenericArray<u8, U32>, GenericArray<u8, U32>), SecurityError> {
+   let key = Hkdf::<Sha256>::new(Some(b""), &secret);
+   
+   let mut a_key = [0u8; 32]; 
+   let mut b_key = [0u8; 32]; 
+
+   Ok((
+      match Hkdf::expand(&key, b"pattern_key", &mut a_key) {
+         Ok(_) => GenericArray::clone_from_slice(&a_key),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }, 
+      match Hkdf::expand(&key, b"apattern_key", &mut b_key) {
+         Ok(_) => GenericArray::clone_from_slice(&b_key),
+         Err(e) => return Err(SecurityError::GenericError(e.to_string()))
+      }
+   ))
 }
 
 
