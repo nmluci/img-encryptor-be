@@ -125,14 +125,15 @@ fn split_image(filename: &str, og_img: DynamicImage) -> (Vec<u8>, Vec<u8>) {
 	let mut apat_cursor = Cursor::new(&mut apat_vec);
 	
 	pat_img
-	.write_to(&mut pat_cursor, ImageFormat::Jpeg)
+	.write_to(&mut pat_cursor, ImageFormat::Png)
 	.expect("failed to write pattern img");
 	apat_img
-	.write_to(&mut apat_cursor, ImageFormat::Jpeg)
+	.write_to(&mut apat_cursor, ImageFormat::Png)
 	.expect("failed to write anti-pattern img");
 	
 	(pat_vec, apat_vec)
 }
+
 
 fn encrypt_data(
 	filepath: &PathBuf,
@@ -210,11 +211,6 @@ fn encrypt_data(
 	let enc_pattern_img = security::aes256_encrypt(pat_key, &pattern_img);
 	let enc_antipattern_img = security::aes256_encrypt(apat_key, &antipattern_img);
 	
-	fs::write("enc_pat_img", enc_pattern_img.clone());
-	fs::write("enc_apat_img", enc_antipattern_img.clone());
-	fs::write("pat_img", pattern_img);
-	fs::write("apat_img", antipattern_img);
-
 
 	buf.write_all(&MAGIC_STRING)
 	.expect("failed to write separator");
@@ -275,13 +271,13 @@ fn decrypt_data(filepath: &PathBuf, outpath: &Option<PathBuf>, key: &String) {
 	
 	let pat_img =
 	security::aes256_decrypt(pat_key, pat_data).expect("failed to decrypt pattern img");
-	let pat_img = image::load_from_memory_with_format(&pat_img, ImageFormat::Jpeg)
+	let pat_img = image::load_from_memory_with_format(&pat_img, ImageFormat::Png)
 	.expect("failed to load pattern img");
 	// let pat_img = image::load_from_memory(&pat_img).expect("failed to load pattern img");
 	
 	let apat_img =
 	security::aes256_decrypt(apat_key, apat_data).expect("failed to decrypt anti-pattern img");
-	let apat_img = image::load_from_memory_with_format(&apat_img, ImageFormat::Jpeg)
+	let apat_img = image::load_from_memory_with_format(&apat_img, ImageFormat::Png)
 	.expect("failed to load anti-pattern img");
 	
 	let actual_data = combine_image(pat_img, apat_img);
